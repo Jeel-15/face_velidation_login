@@ -1,22 +1,28 @@
 FROM python:3.11-slim
 
 RUN apt-get update && apt-get install -y \
+    cmake \
     build-essential \
     libopenblas-dev \
+    liblapack-dev \
+    libx11-dev \
+    libgtk-3-dev \
+    git \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
 RUN pip install --upgrade pip setuptools packaging
 
-RUN pip install --no-cache-dir \
-    "dlib==19.22.1" \
-    --find-links https://github.com/z-mahmud22/Dlib_Windows_Python3.x/releases/download/v1.0/dlib-19.22.1-cp311-cp311-linux_x86_64.whl
+RUN git clone --depth 1 https://github.com/davisking/dlib.git && \
+    find /app/dlib -name "CMakeLists.txt" -exec \
+    sed -i 's/cmake_minimum_required(VERSION 2\.8/cmake_minimum_required(VERSION 3.5/g' {} \; && \
+    cd dlib && \
+    DLIB_NO_GUI_SUPPORT=1 python setup.py install --set DLIB_NO_GUI_SUPPORT=ON && \
+    cd .. && rm -rf dlib
 
 COPY requirements.txt .
-
-RUN grep -v "dlib" requirements.txt > requirements_nodlib.txt && \
-    pip install --no-cache-dir -r requirements_nodlib.txt
+RUN grep -vi "dlib" requirements.txt | pip install --no-cache-dir -r /dev/stdin
 
 COPY . .
 
