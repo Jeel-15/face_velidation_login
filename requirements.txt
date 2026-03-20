@@ -1,3 +1,5 @@
+setuptools
+wheel
 Flask==2.3.3
 Flask-Session==0.5.0
 mediapipe==0.10.32
