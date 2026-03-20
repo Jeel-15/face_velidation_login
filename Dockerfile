@@ -18,7 +18,7 @@ RUN git clone --depth 1 https://github.com/davisking/dlib.git && \
     find /app/dlib -name "CMakeLists.txt" -exec \
     sed -i 's/cmake_minimum_required(VERSION 2\.8/cmake_minimum_required(VERSION 3.5/g' {} \; && \
     cd dlib && \
-    DLIB_NO_GUI_SUPPORT=1 python setup.py install --set DLIB_NO_GUI_SUPPORT=ON && \
+    DLIB_NO_GUI_SUPPORT=1 python setup.py install && \
     cd .. && rm -rf dlib
 
 COPY requirements.txt .
