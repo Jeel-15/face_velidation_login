@@ -1,0 +1,124 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Register — Face Verification System</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<div class="container">
+  <div class="card login-card">
+
+    <!-- Logo -->
+    <div class="card-logo">
+      <div class="logo-icon-wrap">
+        <div class="logo-icon">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+            <circle cx="12" cy="7" r="4"/>
+          </svg>
+        </div>
+      </div>
+      <div>
+        <div class="logo-text">Create Account</div>
+        <div class="logo-sub">Face Verification System</div>
+      </div>
+    </div>
+
+    <h2>New User Registration</h2>
+    <div id="regError"   class="error-message"   style="display:none"></div>
+    <div id="regSuccess" class="success-message" style="display:none"></div>
+
+    <form id="registerForm">
+      <div class="form-group">
+        <label for="regUserId">User ID</label>
+        <input type="text" id="regUserId" placeholder="Choose a unique user ID" required>
+      </div>
+      <div class="form-group">
+        <label for="regEmail">Email Address</label>
+        <input type="email" id="regEmail" placeholder="your@email.com" required>
+      </div>
+      <div class="form-group">
+        <label for="regPassword">Password</label>
+        <input type="password" id="regPassword" placeholder="Create a strong password" required>
+      </div>
+      <div class="form-group">
+        <label for="regPasswordConfirm">Confirm Password</label>
+        <input type="password" id="regPasswordConfirm" placeholder="Repeat your password" required>
+      </div>
+      <button type="submit" id="registerBtn" class="btn btn-primary">
+        <span id="registerBtnText">Create Account</span>
+        <span id="registerSpinner" class="spinner" style="display:none"></span>
+      </button>
+    </form>
+
+    <div class="footer-links">
+      <p>Already have an account? <a href="/login">Sign in</a></p>
+      <p>Already registered? <a href="/enroll">Enroll your face</a></p>
+    </div>
+
+  </div><!-- .card -->
+</div><!-- .container -->
+
+<script src="/static/js/common.js"></script>
+<script>
+document.getElementById('registerForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const errorDiv   = document.getElementById('regError');
+  const successDiv = document.getElementById('regSuccess');
+  const btn        = document.getElementById('registerBtn');
+  const btnText    = document.getElementById('registerBtnText');
+  const spinner    = document.getElementById('registerSpinner');
+
+  errorDiv.style.display   = 'none';
+  successDiv.style.display = 'none';
+
+  const userId   = document.getElementById('regUserId').value.trim();
+  const email    = document.getElementById('regEmail').value.trim();
+  const password = document.getElementById('regPassword').value;
+  const confirm  = document.getElementById('regPasswordConfirm').value;
+
+  if (password !== confirm) {
+    errorDiv.textContent    = 'Passwords do not match.';
+    errorDiv.style.display  = 'block';
+    return;
+  }
+  if (password.length < 6) {
+    errorDiv.textContent   = 'Password must be at least 6 characters.';
+    errorDiv.style.display = 'block';
+    return;
+  }
+
+  btn.disabled         = true;
+  btnText.textContent  = 'Creating account…';
+  spinner.style.display = 'inline-block';
+
+  try {
+    const res  = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({user_id: userId, email, password})
+    });
+    const data = await res.json();
+    if (data.success) {
+      successDiv.textContent  = 'Account created! Redirecting to enrollment…';
+      successDiv.style.display = 'block';
+      setTimeout(() => { window.location.href = '/enroll'; }, 1800);
+    } else {
+      errorDiv.textContent   = data.message || 'Registration failed.';
+      errorDiv.style.display = 'block';
+    }
+  } catch(err) {
+    errorDiv.textContent   = 'Network error. Please try again.';
+    errorDiv.style.display = 'block';
+  } finally {
+    btn.disabled          = false;
+    btnText.textContent   = 'Create Account';
+    spinner.style.display = 'none';
+  }
+});
+</script>
+</body>
+</html>

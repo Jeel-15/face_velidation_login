@@ -1,0 +1,829 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login — Face Verification System</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<div class="container">
+  <div class="card login-card">
+
+    <!-- Logo -->
+    <div class="card-logo">
+      <div class="logo-icon-wrap">
+        <div class="logo-icon">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+        </div>
+      </div>
+      <div>
+        <div class="logo-text">Face Verification System</div>
+        <div class="logo-sub">Biometric Authentication</div>
+      </div>
+    </div>
+
+    <!-- STEP 1: Credentials -->
+    <div id="step-credentials" class="step active">
+      <h2>Step 1 — Credentials</h2>
+      <div id="credError" class="error-message" style="display:none"></div>
+      <form id="loginForm">
+        <div class="form-group">
+          <label for="userId">User ID</label>
+          <input type="text" id="userId" name="user_id" placeholder="Enter your user ID" autocomplete="username" required>
+        </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" placeholder="Enter your password" autocomplete="current-password" required>
+        </div>
+        <button type="submit" class="btn btn-primary">
+          Continue to Face Scan →
+        </button>
+      </form>
+      <div class="footer-links">
+        <p>Not enrolled yet? <a href="/enroll">Start face enrollment</a></p>
+        <p>Need an account? <a href="/register">Create account</a></p>
+      </div>
+    </div>
+
+    <!-- STEP 2: Face Scan -->
+    <div id="step-webcam" class="step">
+      <h2>Step 2 — Face Scan</h2>
+      <div id="captureStatus" class="status-message" style="display:none"></div>
+      <div id="webcamError"  class="error-message"  style="display:none"></div>
+
+      <div class="webcam-container" id="webcamBox">
+        <video id="webcam" autoplay playsinline muted></video>
+        <canvas id="captureCanvas" style="display:none"></canvas>
+        <div class="frame-counter" id="frameCounter" style="display:none">0 / 5</div>
+        <!-- Face position guide -->
+        <div class="face-guide" id="faceGuide">
+          <span class="face-guide-label-top">👤 Place your face here</span>
+          <svg viewBox="0 0 200 240" width="48%" xmlns="http://www.w3.org/2000/svg" style="overflow:visible">
+            <ellipse cx="100" cy="112" rx="82" ry="100" 
+                     stroke="rgba(14,165,233,0.15)" stroke-width="12" fill="none"/>
+            <ellipse cx="100" cy="112" rx="76" ry="95" 
+                     stroke-dasharray="10 5" fill="none"/>
+            <line x1="40" y1="95" x2="160" y2="95" 
+                  stroke="rgba(14,165,233,0.25)" stroke-width="1" stroke-dasharray="4 4"/>
+            <line x1="100" y1="60" x2="100" y2="165" 
+                  stroke="rgba(14,165,233,0.15)" stroke-width="1" stroke-dasharray="4 4"/>
+          </svg>
+          <span class="face-guide-label">Fill the oval with your face — not too close, not too far</span>
+        </div>
+        <div class="face-guide-center"></div>
+        <div class="face-guide-distance">📏 About arm's length from camera</div>
+        <div class="scan-line"></div>
+        <div class="scan-corners"><span></span></div>
+      </div>
+
+      <div id="scanTips" style="margin:10px 0 4px;padding:8px 12px;background:#fff8e1;border:1px solid #ffe082;border-radius:8px;font-size:13.5px;line-height:1.7;color:#5a4000;">
+        🕶️ <strong>Remove glasses</strong> before scanning<br>
+        👁️ <strong>Blink once naturally</strong> during the scan
+      </div>
+
+      <div class="button-group">
+        <button id="startCaptureBtn"  class="btn btn-primary">Start Face Scan</button>
+        <button id="cancelVerifyBtn"  class="btn btn-secondary">Cancel</button>
+      </div>
+    </div>
+
+    <!-- STEP 3: Result -->
+    <div id="step-result" class="step">
+      <h2>Verification Result</h2>
+      <div id="resultContent"></div>
+      <button id="retryBtn" class="btn btn-secondary">Try Again</button>
+    </div>
+
+    <!-- STEP 4: Active Liveness Challenge -->
+    <div id="step-challenge" class="step">
+      <h2>Step 3 — Liveness Check</h2>
+
+      <!-- Step progress indicator -->
+      <div class="challenge-step-indicator">
+        <span class="challenge-step-dot done"></span>
+        <span class="challenge-step-label">Password</span>
+        <span class="challenge-step-dot done"></span>
+        <span class="challenge-step-label">Face Scan</span>
+        <span class="challenge-step-dot active"></span>
+        <span class="challenge-step-label">Liveness</span>
+      </div>
+
+      <div class="challenge-layout">
+      <div id="challenge-section" class="challenge-container">
+
+        <!-- Header -->
+        <div class="challenge-header">
+          <span class="challenge-label">🔒 Liveness Check</span>
+          <span id="challenge-timer" class="challenge-timer">15s</span>
+        </div>
+
+        <!-- Instruction -->
+        <div id="challenge-instruction" class="challenge-instruction">
+          <span id="challenge-icon" class="challenge-icon"></span>
+          <span id="challenge-text" class="challenge-text">Preparing...</span>
+        </div>
+
+        <!-- Progress bar -->
+        <div class="challenge-progress-track">
+          <div id="challenge-progress-bar" class="challenge-progress-fill" style="width: 0%"></div>
+        </div>
+
+        <!-- ── Identity verification status badge ────────────── -->
+        <div id="identity-status-badge" class="identity-badge" style="display: none;">
+          <span id="identity-icon" class="identity-badge-icon">🔍</span>
+          <span id="identity-text" class="identity-badge-text">Verifying identity...</span>
+        </div>
+
+        <!-- Status message -->
+        <p id="challenge-status" class="challenge-status">Preparing...</p>
+
+        <!-- Retry button (hidden until failure) -->
+        <button id="challenge-retry-btn"
+                class="btn btn-warning challenge-retry"
+                style="display: none;"
+                onclick="retryChallenge()">
+          🔄 Try Again
+        </button>
+
+      </div>
+
+      <!-- Webcam stays visible during challenge -->
+      <div class="challenge-webcam-wrap">
+      <div class="challenge-focus-tip">
+        Keep this camera preview in sight while following the instruction card.
+      </div>
+      <div class="webcam-container challenge-webcam scanning" id="challengeWebcamBox">
+        <video id="challengeWebcam" autoplay playsinline muted></video>
+        <div class="challenge-face-status face-searching" id="challengeFaceStatus">🔍 Finding face...</div>
+        <!-- Face position guide -->
+        <div class="face-guide" id="challengeFaceGuide">
+          <span class="face-guide-label-top">👤 Keep your face here</span>
+          <svg viewBox="0 0 200 240" width="48%" xmlns="http://www.w3.org/2000/svg" style="overflow:visible">
+            <ellipse cx="100" cy="112" rx="82" ry="100" 
+                     stroke="rgba(14,165,233,0.15)" stroke-width="12" fill="none"/>
+            <ellipse cx="100" cy="112" rx="76" ry="95" 
+                     stroke-dasharray="10 5" fill="none"/>
+            <line x1="40" y1="95" x2="160" y2="95" 
+                  stroke="rgba(14,165,233,0.25)" stroke-width="1" stroke-dasharray="4 4"/>
+            <line x1="100" y1="60" x2="100" y2="165" 
+                  stroke="rgba(14,165,233,0.15)" stroke-width="1" stroke-dasharray="4 4"/>
+          </svg>
+          <span class="face-guide-label">Stay in the oval while performing the action</span>
+        </div>
+        <div class="face-guide-center"></div>
+        <div class="face-guide-distance">Keep your face in the oval — move gently</div>
+        <div class="scan-line"></div>
+        <div class="scan-corners"><span></span></div>
+
+        <!-- ── Identity overlay on webcam ─────────────────────── -->
+        <div id="identity-overlay" class="identity-overlay" style="display: none;">
+          <span id="identity-overlay-text">🔍 Checking...</span>
+        </div>
+      </div>
+      </div>
+      </div>
+
+      <div class="button-group">
+        <button id="cancelChallengeBtn" class="btn btn-secondary" onclick="handleVerificationCancel()">Cancel</button>
+      </div>
+    </div>
+
+  </div><!-- .card -->
+</div><!-- .container -->
+
+<script src="/static/js/common.js"></script>
+<script src="/static/js/face_verify.js"></script>
+<script src="/static/js/challenge.js"></script>
+<script>
+  const wb = document.getElementById('webcamBox');
+  const startBtn = document.getElementById('startCaptureBtn');
+  const cancelBtn = document.getElementById('cancelVerifyBtn');
+  if(startBtn)  startBtn.addEventListener('click',  () => wb && wb.classList.add('scanning'));
+  if(cancelBtn) cancelBtn.addEventListener('click', () => wb && wb.classList.remove('scanning'));
+
+  // ══════════════════════════════════════════════════
+  // ACTIVE LIVENESS CHALLENGE — Glue Code
+  // ══════════════════════════════════════════════════
+
+  var challengeHandler = null;
+
+  /**
+   * Update the identity verification badge UI.
+   * Shows real-time face matching status during challenge.
+   */
+  function updateIdentityBadge(identity) {
+      var badge = document.getElementById('identity-status-badge');
+      var icon  = document.getElementById('identity-icon');
+      var text  = document.getElementById('identity-text');
+      var overlay     = document.getElementById('identity-overlay');
+      var overlayText = document.getElementById('identity-overlay-text');
+
+      if (!identity || !identity.checks) {
+          // No checks yet — hide badge
+          badge.style.display = 'none';
+          if (overlay) overlay.style.display = 'none';
+          return;
+      }
+
+      badge.style.display = 'flex';
+
+      var pct = Math.round(identity.ratio * 100);
+      var checksText = identity.matches + '/' + identity.checks;
+
+      if (identity.ratio >= 0.75) {
+          // ── Strong match ──
+          badge.className = 'identity-badge identity-match';
+          icon.textContent = '✅';
+          text.textContent = 'Identity confirmed (' + checksText + ')';
+          if (overlay) {
+              overlay.style.display = 'block';
+              overlay.className = 'identity-overlay identity-overlay-match';
+              overlayText.textContent = '✅ Identity verified';
+          }
+      } else if (identity.ratio >= 0.5) {
+          // ── Partial match (acceptable) ──
+          badge.className = 'identity-badge identity-partial';
+          icon.textContent = '🔄';
+          text.textContent = 'Verifying identity... (' + checksText + ')';
+          if (overlay) {
+              overlay.style.display = 'block';
+              overlay.className = 'identity-overlay identity-overlay-partial';
+              overlayText.textContent = '🔄 Verifying... ' + pct + '%';
+          }
+      } else {
+          // ── Low match (concerning) ──
+          badge.className = 'identity-badge identity-fail';
+          icon.textContent = '⚠️';
+          text.textContent = 'Identity mismatch (' + checksText + ')';
+          if (overlay) {
+              overlay.style.display = 'block';
+              overlay.className = 'identity-overlay identity-overlay-fail';
+              overlayText.textContent = '⚠️ Face mismatch';
+          }
+      }
+  }
+
+  /**
+   * Called from face_verify.js when face verification passes
+   * and server responds with next_step === 'challenge'
+   */
+  function startChallenge() {
+      // Switch to challenge step
+      showStep('step-challenge');
+
+      var mainVideo = document.getElementById('webcam');
+      var challengeVideo = document.getElementById('challengeWebcam');
+
+      if (mainVideo && mainVideo.srcObject && challengeVideo) {
+          challengeVideo.srcObject = mainVideo.srcObject;
+          challengeVideo.play().catch(function(e) {
+              console.error('Challenge video play error:', e);
+          });
+      }
+
+      var videoToUse = mainVideo;
+
+      if (!videoToUse || !videoToUse.srcObject) {
+          videoToUse = challengeVideo;
+      }
+
+      if (!videoToUse || !videoToUse.srcObject) {
+          console.error('No webcam stream available for challenge');
+          return;
+      }
+
+      console.log('Challenge using video element:', videoToUse.id,
+                  'stream active:', videoToUse.srcObject.active);
+
+      // Reset UI
+      document.getElementById('challenge-retry-btn').style.display = 'none';
+      document.getElementById('challenge-progress-bar').className = 'challenge-progress-fill';
+      document.getElementById('challenge-progress-bar').style.width = '0%';
+      document.getElementById('challenge-timer').className = 'challenge-timer';
+      document.getElementById('challenge-status').textContent = 'Preparing...';
+
+      // ── Reset identity UI ──────────────────────────────────
+      document.getElementById('identity-status-badge').style.display = 'none';
+      document.getElementById('identity-overlay').style.display = 'none';
+
+      // Create challenge handler
+      challengeHandler = new LivenessChallenge(videoToUse, {
+
+          onPass: function(result) {
+              document.getElementById('challenge-status').textContent = '✅ ' + result.message;
+              document.getElementById('challenge-progress-bar').style.width = '100%';
+              document.getElementById('challenge-progress-bar').classList.add('progress-success');
+
+              // ── Show final identity status ─────────────────
+              if (result.identity) {
+                  updateIdentityBadge(result.identity);
+              } else {
+                  // Challenge passed = identity was confirmed
+                  var badge = document.getElementById('identity-status-badge');
+                  badge.style.display = 'flex';
+                  badge.className = 'identity-badge identity-match';
+                  document.getElementById('identity-icon').textContent = '✅';
+                  document.getElementById('identity-text').textContent = 'Identity confirmed';
+              }
+
+              // Stop webcam
+              if (verificationState.stream) {
+                  stopStream(verificationState.stream);
+              }
+
+              // Redirect to dashboard
+              setTimeout(function() {
+                  window.location.href = result.redirect || '/dashboard';
+              }, 1200);
+          },
+
+          onFail: function(message) {
+              document.getElementById('challenge-status').textContent = '❌ ' + message;
+              document.getElementById('challenge-retry-btn').style.display = 'inline-block';
+              document.getElementById('challenge-progress-bar').classList.add('progress-fail');
+
+              // ── Check if identity failure ──────────────────
+              var isIdentityFail = message.toLowerCase().indexOf('identity') !== -1 ||
+                                   message.toLowerCase().indexOf('enrolled') !== -1 ||
+                                   message.toLowerCase().indexOf('does not match') !== -1;
+
+              if (isIdentityFail) {
+                  // Show identity failure badge
+                  var badge = document.getElementById('identity-status-badge');
+                  badge.style.display = 'flex';
+                  badge.className = 'identity-badge identity-fail';
+                  document.getElementById('identity-icon').textContent = '🚫';
+                  document.getElementById('identity-text').textContent = 'Identity verification failed';
+
+                  // Update overlay
+                  var overlay = document.getElementById('identity-overlay');
+                  if (overlay) {
+                      overlay.style.display = 'block';
+                      overlay.className = 'identity-overlay identity-overlay-fail';
+                      document.getElementById('identity-overlay-text').textContent = '🚫 Wrong person detected';
+                  }
+              }
+          },
+
+          onStatus: function(info) {
+              // ── Update identity badge on every status ──────
+              if (info.identity) {
+                  updateIdentityBadge(info.identity);
+              }
+
+              // Timer update
+              if (info.remaining !== undefined) {
+                  var timerEl = document.getElementById('challenge-timer');
+                  timerEl.textContent = Math.ceil(info.remaining) + 's';
+                  if (info.remaining <= 5) {
+                      timerEl.classList.add('timer-warning');
+                  } else {
+                      timerEl.classList.remove('timer-warning');
+                  }
+              }
+
+              // Challenge instruction (first display)
+              if (info.phase === 'challenge_start') {
+                  document.getElementById('challenge-icon').textContent = info.icon;
+                  document.getElementById('challenge-text').textContent = info.instruction;
+                  var statusEl = document.getElementById('challenge-status');
+                  if (info.detail) {
+                      statusEl.textContent = info.detail;
+                  } else {
+                      statusEl.textContent = 'Look straight at the camera first...';
+                  }
+              }
+
+              // Progress
+              if (info.progress !== undefined) {
+                  var pct = Math.round(info.progress * 100);
+                  document.getElementById('challenge-progress-bar').style.width = pct + '%';
+              }
+
+              // Status message
+              if (info.message && info.phase !== 'tick') {
+                  document.getElementById('challenge-status').textContent = info.message;
+              }
+
+              // Face status indicator on webcam
+              var faceStatus = document.getElementById('challengeFaceStatus');
+              if (faceStatus && info.status) {
+                  if (info.status === 'no_face') {
+                      faceStatus.className = 'challenge-face-status face-lost';
+                      faceStatus.textContent = '👀 Look at the camera';
+                  } else if (info.status === 'waiting_neutral') {
+                      faceStatus.className = 'challenge-face-status face-found';
+                      faceStatus.textContent = '✓ Face detected';
+                  } else if (info.status === 'detecting' || info.status === 'neutral_ok') {
+                      faceStatus.className = 'challenge-face-status face-found';
+                      faceStatus.textContent = '✓ Looking good!';
+                  } else if (info.status === 'continue') {
+                      faceStatus.className = 'challenge-face-status face-found';
+                      faceStatus.textContent = '✓ Face detected';
+                  }
+              }
+
+              // Visual feedback
+              var section = document.getElementById('challenge-section');
+              section.classList.remove('challenge-detecting', 'challenge-waiting');
+              if (info.status === 'detecting') {
+                  section.classList.add('challenge-detecting');
+              } else if (info.status === 'waiting_neutral') {
+                  section.classList.add('challenge-waiting');
+              }
+          }
+      });
+
+      challengeHandler.start();
+  }
+
+  function retryChallenge() {
+      document.getElementById('challenge-retry-btn').style.display = 'none';
+      document.getElementById('challenge-progress-bar').className = 'challenge-progress-fill';
+      document.getElementById('challenge-progress-bar').style.width = '0%';
+      document.getElementById('challenge-timer').classList.remove('timer-warning');
+      document.getElementById('challenge-status').textContent = 'Retrying...';
+
+      // ── Reset identity UI on retry ─────────────────────────
+      document.getElementById('identity-status-badge').style.display = 'none';
+      document.getElementById('identity-overlay').style.display = 'none';
+
+      if (challengeHandler) {
+          challengeHandler.retry();
+      }
+  }
+</script>
+</body>
+</html>
+
+
+{# <!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login — Face Verification System</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<div class="container">
+  <div class="card login-card">
+
+    <!-- Logo -->
+    <div class="card-logo">
+      <div class="logo-icon-wrap">
+        <div class="logo-icon">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+        </div>
+      </div>
+      <div>
+        <div class="logo-text">Face Verification System</div>
+        <div class="logo-sub">Biometric Authentication</div>
+      </div>
+    </div>
+
+    <!-- STEP 1: Credentials -->
+    <div id="step-credentials" class="step active">
+      <h2>Step 1 — Credentials</h2>
+      <div id="credError" class="error-message" style="display:none"></div>
+      <form id="loginForm">
+        <div class="form-group">
+          <label for="userId">User ID</label>
+          <input type="text" id="userId" name="user_id" placeholder="Enter your user ID" autocomplete="username" required>
+        </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" placeholder="Enter your password" autocomplete="current-password" required>
+        </div>
+        <button type="submit" class="btn btn-primary">
+          Continue to Face Scan →
+        </button>
+      </form>
+      <div class="footer-links">
+        <p>Not enrolled yet? <a href="/enroll">Start face enrollment</a></p>
+        <p>Need an account? <a href="/register">Create account</a></p>
+      </div>
+    </div>
+
+    <!-- STEP 2: Face Scan -->
+    <div id="step-webcam" class="step">
+      <h2>Step 2 — Face Scan</h2>
+      <div id="captureStatus" class="status-message" style="display:none"></div>
+      <div id="webcamError"  class="error-message"  style="display:none"></div>
+
+      <div class="webcam-container" id="webcamBox">
+        <video id="webcam" autoplay playsinline muted></video>
+        <canvas id="captureCanvas" style="display:none"></canvas>
+        <div class="frame-counter" id="frameCounter" style="display:none">0 / 5</div>
+        <!-- Face position guide -->
+                <!-- Face position guide (functional) -->
+        <div class="face-guide" id="faceGuide">
+          <span class="face-guide-label-top">👤 Place your face here</span>
+          <svg viewBox="0 0 200 240" width="48%" xmlns="http://www.w3.org/2000/svg" style="overflow:visible">
+            <!-- Outer glow ellipse -->
+            <ellipse cx="100" cy="112" rx="82" ry="100" 
+                     stroke="rgba(14,165,233,0.15)" stroke-width="12" fill="none"/>
+            <!-- Main guide ellipse -->
+            <ellipse cx="100" cy="112" rx="76" ry="95" 
+                     stroke-dasharray="10 5" fill="none"/>
+            <!-- Eye level line -->
+            <line x1="40" y1="95" x2="160" y2="95" 
+                  stroke="rgba(14,165,233,0.25)" stroke-width="1" stroke-dasharray="4 4"/>
+            <!-- Nose center line -->
+            <line x1="100" y1="60" x2="100" y2="165" 
+                  stroke="rgba(14,165,233,0.15)" stroke-width="1" stroke-dasharray="4 4"/>
+          </svg>
+          <span class="face-guide-label">Fill the oval with your face — not too close, not too far</span>
+        </div>
+        <!-- Center dot -->
+        <div class="face-guide-center"></div>
+        <!-- Distance hint -->
+        <div class="face-guide-distance">📏 About arm's length from camera</div>
+        <div class="scan-line"></div>
+        <div class="scan-corners"><span></span></div>
+      </div>
+
+      <!-- Tips shown before scan starts -->
+      <div id="scanTips" style="margin:10px 0 4px;padding:8px 12px;background:#fff8e1;border:1px solid #ffe082;border-radius:8px;font-size:13.5px;line-height:1.7;color:#5a4000;">
+        🕶️ <strong>Remove glasses</strong> before scanning<br>
+        👁️ <strong>Blink once naturally</strong> during the scan
+      </div>
+
+      <div class="button-group">
+        <button id="startCaptureBtn"  class="btn btn-primary">Start Face Scan</button>
+        <button id="cancelVerifyBtn"  class="btn btn-secondary">Cancel</button>
+      </div>
+    </div>
+
+    <!-- STEP 3: Result -->
+    <div id="step-result" class="step">
+      <h2>Verification Result</h2>
+      <div id="resultContent"></div>
+      <button id="retryBtn" class="btn btn-secondary">Try Again</button>
+    </div>
+
+    <!-- STEP 4: Active Liveness Challenge -->
+    <div id="step-challenge" class="step">
+      <h2>Step 3 — Liveness Check</h2>
+
+      <!-- Step progress indicator -->
+      <div class="challenge-step-indicator">
+        <span class="challenge-step-dot done"></span>
+        <span class="challenge-step-label">Password</span>
+        <span class="challenge-step-dot done"></span>
+        <span class="challenge-step-label">Face Scan</span>
+        <span class="challenge-step-dot active"></span>
+        <span class="challenge-step-label">Liveness</span>
+      </div>
+
+      <div id="challenge-section" class="challenge-container">
+
+        <!-- Header -->
+        <div class="challenge-header">
+          <span class="challenge-label">🔒 Liveness Check</span>
+          <span id="challenge-timer" class="challenge-timer">15s</span>
+        </div>
+
+        <!-- Instruction -->
+        <div id="challenge-instruction" class="challenge-instruction">
+          <span id="challenge-icon" class="challenge-icon"></span>
+          <span id="challenge-text" class="challenge-text">Preparing...</span>
+        </div>
+
+        <!-- Progress bar -->
+        <div class="challenge-progress-track">
+          <div id="challenge-progress-bar" class="challenge-progress-fill" style="width: 0%"></div>
+        </div>
+
+        <!-- Status message -->
+        <p id="challenge-status" class="challenge-status">Preparing...</p>
+
+        <!-- Retry button (hidden until failure) -->
+        <button id="challenge-retry-btn"
+                class="btn btn-warning challenge-retry"
+                style="display: none;"
+                onclick="retryChallenge()">
+          🔄 Try Again
+        </button>
+
+      </div>
+
+      <!-- Webcam stays visible during challenge -->
+            <!-- Webcam stays visible during challenge -->
+      <div class="webcam-container challenge-webcam scanning" id="challengeWebcamBox">
+        <video id="challengeWebcam" autoplay playsinline muted></video>
+        <div class="challenge-face-status face-searching" id="challengeFaceStatus">🔍 Finding face...</div>
+        <!-- Face position guide (functional) -->
+        <div class="face-guide" id="challengeFaceGuide">
+          <span class="face-guide-label-top">👤 Keep your face here</span>
+          <svg viewBox="0 0 200 240" width="48%" xmlns="http://www.w3.org/2000/svg" style="overflow:visible">
+            <!-- Outer glow ellipse -->
+            <ellipse cx="100" cy="112" rx="82" ry="100" 
+                     stroke="rgba(14,165,233,0.15)" stroke-width="12" fill="none"/>
+            <!-- Main guide ellipse -->
+            <ellipse cx="100" cy="112" rx="76" ry="95" 
+                     stroke-dasharray="10 5" fill="none"/>
+            <!-- Eye level line -->
+            <line x1="40" y1="95" x2="160" y2="95" 
+                  stroke="rgba(14,165,233,0.25)" stroke-width="1" stroke-dasharray="4 4"/>
+            <!-- Nose center line -->
+            <line x1="100" y1="60" x2="100" y2="165" 
+                  stroke="rgba(14,165,233,0.15)" stroke-width="1" stroke-dasharray="4 4"/>
+          </svg>
+          <span class="face-guide-label">Stay in the oval while performing the action</span>
+        </div>
+        <!-- Center dot -->
+        <div class="face-guide-center"></div>
+        <!-- Distance hint -->
+        <div class="face-guide-distance">Keep your face in the oval — move gently</div>
+        <div class="scan-line"></div>
+        <div class="scan-corners"><span></span></div>
+      </div>
+
+      <div class="button-group">
+        <button id="cancelChallengeBtn" class="btn btn-secondary" onclick="handleVerificationCancel()">Cancel</button>
+      </div>
+    </div>
+
+  </div><!-- .card -->
+</div><!-- .container -->
+
+<script src="/static/js/common.js"></script>
+<script src="/static/js/face_verify.js"></script>
+<script src="/static/js/challenge.js"></script>
+<script>
+  const wb = document.getElementById('webcamBox');
+  const startBtn = document.getElementById('startCaptureBtn');
+  const cancelBtn = document.getElementById('cancelVerifyBtn');
+  if(startBtn)  startBtn.addEventListener('click',  () => wb && wb.classList.add('scanning'));
+  if(cancelBtn) cancelBtn.addEventListener('click', () => wb && wb.classList.remove('scanning'));
+
+  // ══════════════════════════════════════════════════
+  // ACTIVE LIVENESS CHALLENGE — Glue Code
+  // ══════════════════════════════════════════════════
+
+  var challengeHandler = null;
+
+  /**
+   * Called from face_verify.js when face verification passes
+   * and server responds with next_step === 'challenge'
+   */
+  function startChallenge() {
+      // Switch to challenge step
+      showStep('step-challenge');
+
+      // Reuse the existing webcam stream OR the challenge video element
+            // Use the ORIGINAL webcam video element directly
+      // Copying streams to a second element causes lag and frame issues
+      var mainVideo = document.getElementById('webcam');
+      var challengeVideo = document.getElementById('challengeWebcam');
+
+      // Try to use challenge video with copied stream first
+      if (mainVideo && mainVideo.srcObject && challengeVideo) {
+          challengeVideo.srcObject = mainVideo.srcObject;
+          challengeVideo.play().catch(function(e) {
+              console.error('Challenge video play error:', e);
+          });
+      }
+
+      // ALWAYS use the main video element for frame capture
+      // It has the direct camera connection (no copy lag)
+      var videoToUse = mainVideo;
+
+      // Fallback: if main video lost stream, try challenge video
+      if (!videoToUse || !videoToUse.srcObject) {
+          videoToUse = challengeVideo;
+      }
+
+      if (!videoToUse || !videoToUse.srcObject) {
+          console.error('No webcam stream available for challenge');
+          return;
+      }
+
+      console.log('Challenge using video element:', videoToUse.id,
+                  'stream active:', videoToUse.srcObject.active);
+
+      // Reset UI
+      document.getElementById('challenge-retry-btn').style.display = 'none';
+      document.getElementById('challenge-progress-bar').className = 'challenge-progress-fill';
+      document.getElementById('challenge-progress-bar').style.width = '0%';
+      document.getElementById('challenge-timer').className = 'challenge-timer';
+      document.getElementById('challenge-status').textContent = 'Preparing...';
+
+      // Create challenge handler
+      challengeHandler = new LivenessChallenge(videoToUse, {
+
+          onPass: function(result) {
+              document.getElementById('challenge-status').textContent = '✅ ' + result.message;
+              document.getElementById('challenge-progress-bar').style.width = '100%';
+              document.getElementById('challenge-progress-bar').classList.add('progress-success');
+
+              // Stop webcam
+              if (verificationState.stream) {
+                  stopStream(verificationState.stream);
+              }
+
+              // Redirect to dashboard
+              setTimeout(function() {
+                  window.location.href = result.redirect || '/dashboard';
+              }, 1200);
+          },
+
+          onFail: function(message) {
+              document.getElementById('challenge-status').textContent = '❌ ' + message;
+              document.getElementById('challenge-retry-btn').style.display = 'inline-block';
+              document.getElementById('challenge-progress-bar').classList.add('progress-fail');
+          },
+
+          onStatus: function(info) {
+              // Timer update
+              if (info.remaining !== undefined) {
+                  var timerEl = document.getElementById('challenge-timer');
+                  timerEl.textContent = Math.ceil(info.remaining) + 's';
+                  if (info.remaining <= 5) {
+                      timerEl.classList.add('timer-warning');
+                  } else {
+                      timerEl.classList.remove('timer-warning');
+                  }
+              }
+
+              // Challenge instruction (first display)
+                            // Challenge instruction (first display)
+              if (info.phase === 'challenge_start') {
+                  document.getElementById('challenge-icon').textContent = info.icon;
+                  document.getElementById('challenge-text').textContent = info.instruction;
+                  // Show detail hint below instruction
+                  var statusEl = document.getElementById('challenge-status');
+                  if (info.detail) {
+                      statusEl.textContent = info.detail;
+                  } else {
+                      statusEl.textContent = 'Look straight at the camera first...';
+                  }
+              }
+
+              // Progress
+              if (info.progress !== undefined) {
+                  var pct = Math.round(info.progress * 100);
+                  document.getElementById('challenge-progress-bar').style.width = pct + '%';
+              }
+
+              // Status message
+              if (info.message && info.phase !== 'tick') {
+                  document.getElementById('challenge-status').textContent = info.message;
+              }
+
+              // Face status indicator on webcam
+              var faceStatus = document.getElementById('challengeFaceStatus');
+              if (faceStatus && info.status) {
+                  if (info.status === 'no_face') {
+                      faceStatus.className = 'challenge-face-status face-lost';
+                      faceStatus.textContent = '👀 Look at the camera';
+                  } else if (info.status === 'waiting_neutral') {
+                      faceStatus.className = 'challenge-face-status face-found';
+                      faceStatus.textContent = '✓ Face detected';
+                  } else if (info.status === 'detecting' || info.status === 'neutral_ok') {
+                      faceStatus.className = 'challenge-face-status face-found';
+                      faceStatus.textContent = '✓ Looking good!';
+                  } else if (info.status === 'continue') {
+                      faceStatus.className = 'challenge-face-status face-found';
+                      faceStatus.textContent = '✓ Face detected';
+                  }
+              }
+
+              // Visual feedback
+              var section = document.getElementById('challenge-section');
+              section.classList.remove('challenge-detecting', 'challenge-waiting');
+              if (info.status === 'detecting') {
+                  section.classList.add('challenge-detecting');
+              } else if (info.status === 'waiting_neutral') {
+                  section.classList.add('challenge-waiting');
+              }
+          }
+      });
+
+      challengeHandler.start();
+  }
+
+  function retryChallenge() {
+      document.getElementById('challenge-retry-btn').style.display = 'none';
+      document.getElementById('challenge-progress-bar').className = 'challenge-progress-fill';
+      document.getElementById('challenge-progress-bar').style.width = '0%';
+      document.getElementById('challenge-timer').classList.remove('timer-warning');
+      document.getElementById('challenge-status').textContent = 'Retrying...';
+
+      if (challengeHandler) {
+          challengeHandler.retry();
+      }
+  }
+</script>
+</body>
+</html> #}

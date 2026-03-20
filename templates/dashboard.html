@@ -1,0 +1,184 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — Face Verification System</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/static/css/style.css">
+  <style>
+    .container { max-width: 760px; }
+    .stat-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+    @media(max-width:580px) { .stat-row { grid-template-columns: 1fr 1fr; } }
+    .stat-card {
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-s);
+      padding: 16px 18px;
+      transition: border-color .2s, box-shadow .2s, transform .2s;
+    }
+    .stat-card:hover {
+      border-color: var(--border-h);
+      box-shadow: 0 4px 16px rgba(37,99,235,.08);
+      transform: translateY(-2px);
+    }
+    .stat-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+      margin-bottom: 8px;
+    }
+    .stat-value {
+      font-size: 24px;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--blue);
+    }
+    .stat-value.green  { color: var(--success); }
+    .stat-value.violet { color: #7c3aed; }
+    .stat-sub {
+      font-size: 11px;
+      color: var(--text-dim);
+      margin-top: 3px;
+    }
+    .user-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .user-info h1 { margin: 0; font-size: 18px; }
+    .user-info .greeting {
+      font-size: 10px;
+      color: var(--blue);
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      font-family: 'JetBrains Mono', monospace;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="card dashboard-card">
+
+    <!-- Header -->
+    <div id="maintenanceModeWarning" class="warning-banner" style="display:none">
+      <strong>⚠ Maintenance Mode Active</strong>
+      The system is currently in maintenance mode. Some features may be limited.
+    </div>
+
+    <div class="dash-header">
+      <div class="user-row">
+        <div class="user-avatar" id="userAvatar">U</div>
+        <div class="user-info">
+          <h1 id="welcomeUser">Welcome back</h1>
+          <div class="greeting">
+            <span class="status-badge online">Authenticated</span>
+          </div>
+        </div>
+      </div>
+      <div class="dash-actions">
+        <button id="adminPanelBtn"   class="btn btn-secondary" style="display:none">Admin Panel</button>
+        <button id="switchAccountBtn" class="btn btn-secondary">Switch Account</button>
+        <button id="logoutBtn"        class="btn btn-danger">Sign Out</button>
+      </div>
+    </div>
+
+    <!-- Stat cards -->
+    <div class="stat-row">
+      <div class="stat-card">
+        <div class="stat-label">Face Samples</div>
+        <div class="stat-value" id="statSamples">—</div>
+        <div class="stat-sub">biometric records</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Status</div>
+        <div class="stat-value green" id="statEnrolled">—</div>
+        <div class="stat-sub">enrollment state</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Enrolled Since</div>
+        <div class="stat-value violet" id="statDate" style="font-size:13px;margin-top:3px">—</div>
+        <div class="stat-sub">registration date</div>
+      </div>
+    </div>
+
+    <!-- Info panels -->
+    <div class="dash-grid">
+      <div class="info-panel">
+        <h3>Authentication Method</h3>
+        <ul>
+          <li>Password verification</li>
+          <li>Facial biometric scan</li>
+          <li>Anti-spoofing detection</li>
+          <li>Multi-frame analysis</li>
+        </ul>
+      </div>
+      <div class="info-panel">
+        <h3>Security Info</h3>
+        <p><strong>Session:</strong> Active</p>
+        <p><strong>Method:</strong> Face Recognition</p>
+        <p><strong>Algorithm:</strong> dlib ResNet-34</p>
+        <p><strong>Threshold:</strong> 0.60 Euclidean</p>
+      </div>
+    </div>
+
+  </div><!-- .card -->
+</div><!-- .container -->
+
+<script src="/static/js/common.js"></script>
+<script>
+(async function() {
+  try {
+    const res  = await fetch('/api/user/profile');
+    const data = await res.json();
+    if (!data.success) { window.location.href = '/login'; return; }
+
+    const user = data.user;
+    const id   = user.user_id || 'User';
+
+    // Avatar initial
+    document.getElementById('userAvatar').textContent = id.charAt(0).toUpperCase();
+    document.getElementById('welcomeUser').textContent = 'Welcome, ' + id;
+
+    // Stats
+    document.getElementById('statSamples').textContent  = user.face_sample_count ?? '—';
+    document.getElementById('statEnrolled').textContent = user.is_enrolled ? 'Enrolled' : 'Not Enrolled';
+    if (user.enrollment_completed_at) {
+      const d = new Date(user.enrollment_completed_at);
+      document.getElementById('statDate').textContent = d.toLocaleDateString('en-IN', {year:'numeric',month:'short',day:'numeric'});
+    }
+
+    // Admin button
+    if (user.is_admin) {
+      document.getElementById('adminPanelBtn').style.display = 'inline-flex';
+    }
+
+    // Maintenance
+    if (user.maintenance_mode) {
+      document.getElementById('maintenanceModeWarning').style.display = 'block';
+    }
+  } catch(e) { window.location.href = '/login'; }
+})();
+
+document.getElementById('adminPanelBtn')?.addEventListener('click', () => { window.location.href = '/admin'; });
+document.getElementById('switchAccountBtn').addEventListener('click', async () => {
+  await fetch('/api/auth/logout', {method:'POST'});
+  window.location.href = '/login';
+});
+document.getElementById('logoutBtn').addEventListener('click', async () => {
+  await fetch('/api/auth/logout', {method:'POST'});
+  window.location.href = '/login';
+});
+</script>
+</body>
+</html>

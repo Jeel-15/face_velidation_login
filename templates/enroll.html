@@ -1,0 +1,123 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Enroll — Face Verification System</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<div class="container">
+  <div class="card login-card">
+
+    <!-- Logo -->
+    <div class="card-logo">
+      <div class="logo-icon-wrap">
+        <div class="logo-icon">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
+        </div>
+      </div>
+      <div>
+        <div class="logo-text">Face Enrollment</div>
+        <div class="logo-sub">Biometric Registration</div>
+      </div>
+    </div>
+
+    <!-- Step indicator -->
+    <div class="steps-indicator">
+      <div class="step-dot active" id="dot1"><div class="dot">1</div><span>Credentials</span></div>
+      <div class="step-line" id="line1"></div>
+      <div class="step-dot"        id="dot2"><div class="dot">2</div><span>Capture</span></div>
+      <div class="step-line" id="line2"></div>
+      <div class="step-dot"        id="dot3"><div class="dot">3</div><span>Done</span></div>
+    </div>
+
+    <!-- STEP 1: Credentials -->
+    <div id="step-credentials" class="step active">
+      <h2>Step 1 — Credentials</h2>
+      <div id="enrollError" class="error-message" style="display:none"></div>
+      <form id="enrollmentForm">
+        <div class="form-group">
+          <label for="enrollUserId">User ID</label>
+          <input type="text" id="enrollUserId" placeholder="Enter your user ID" required>
+        </div>
+        <div class="form-group">
+          <label for="enrollPassword">Password</label>
+          <input type="password" id="enrollPassword" placeholder="Enter your password" required>
+        </div>
+        <button type="submit" id="startEnrollBtn" class="btn btn-primary">
+          Continue to Face Capture →
+        </button>
+      </form>
+      <div class="footer-links">
+        <p>Need an account? <a href="/register">Create account</a></p>
+        <p>Already enrolled? <a href="/login">Sign in</a></p>
+      </div>
+    </div>
+
+    <!-- STEP 2: Capture -->
+    <div id="step-capture" class="step">
+      <h2>Step 2 — Face Capture</h2>
+      <div id="enrollStatus" class="status-message" style="display:none"></div>
+
+      <div class="progress-info">
+        <div class="progress-bar">
+          <div class="progress-fill" id="progressFill" style="width:0%"></div>
+        </div>
+        <p>Samples collected: <strong id="sampleCount">0</strong> / <strong id="targetCount">10</strong></p>
+        <p class="progress-message" id="progressMessage">Position your face in the frame</p>
+      </div>
+
+      <div class="webcam-container" id="enrollWebcamBox">
+        <video id="webcamEnroll" autoplay playsinline muted></video>
+        <canvas id="enrollCaptureCanvas" style="display:none"></canvas>
+        <!-- Face position guide -->
+        <div class="face-guide" id="faceGuideEnroll">
+          <svg viewBox="0 0 200 220" width="52%" height="auto" xmlns="http://www.w3.org/2000/svg">
+            <ellipse cx="100" cy="105" rx="78" ry="98"/>
+          </svg>
+          <span class="face-guide-label">Position your face in the oval</span>
+        </div>
+        <div class="scan-line"></div>
+        <div class="scan-corners"><span></span></div>
+      </div>
+
+      <div id="captureError" class="error-message" style="display:none;margin-top:10px;"></div>
+
+      <div class="button-group">
+        <button id="captureBtn" class="btn btn-primary">▶ Start Capture</button>
+        <button id="cancelEnrollBtn" class="btn btn-secondary">Cancel</button>
+      </div>
+    </div>
+
+    <!-- STEP 3: Result -->
+    <div id="step-result" class="step">
+      <h2>Enrollment Complete</h2>
+      <div id="enrollResultContent"></div>
+      <a href="/login" class="btn btn-primary">Go to Login →</a>
+    </div>
+
+  </div><!-- .card -->
+</div><!-- .container -->
+
+<script src="/static/js/common.js"></script>
+<script src="/static/js/enroll.js"></script>
+<script>
+  const ewb = document.getElementById('enrollWebcamBox');
+  const cancelEnrollBtn = document.getElementById('cancelEnrollBtn');
+  if(cancelEnrollBtn) cancelEnrollBtn.addEventListener('click', () => ewb && ewb.classList.remove('scanning'));
+  // Activate scan when step-capture becomes active
+  const observer = new MutationObserver(() => {
+    const s2 = document.getElementById('step-capture');
+    if(s2 && s2.classList.contains('active') && ewb) ewb.classList.add('scanning');
+    else if(ewb) ewb.classList.remove('scanning');
+  });
+  const s2el = document.getElementById('step-capture');
+  if(s2el) observer.observe(s2el, {attributes:true, attributeFilter:['class']});
+</script>
+</body>
+</html>
