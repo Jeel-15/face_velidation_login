@@ -12,6 +12,8 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
+RUN pip install --upgrade pip setuptools packaging
+
 RUN git clone https://github.com/davisking/dlib.git && \
     sed -i 's/cmake_minimum_required(VERSION 2.8.12)/cmake_minimum_required(VERSION 3.5)/' /app/dlib/dlib/external/pybind11/CMakeLists.txt && \
     cd dlib && \
