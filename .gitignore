@@ -59,3 +59,12 @@ flask_session/
 # OS
 .DS_Store
 Thumbs.db
+
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+*.db
+*.backup
